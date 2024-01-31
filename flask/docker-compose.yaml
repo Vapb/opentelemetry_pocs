@@ -1,0 +1,43 @@
+version: "3"
+
+networks:
+  flask_net:
+    driver: bridge
+
+services:
+  log-generator:
+    build: .
+    ports:
+      - "8080:5000"
+    restart: always
+    depends_on:
+      - collector 
+    networks:
+      - flask_net
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+    - ./otel-config.yaml:/etc/otelcol-contrib/config.yaml
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    depends_on:
+      - loki
+    networks:
+      - flask_net
+
+  loki:
+    image: grafana/loki:latest
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+      - -print-config-stderr=true
+    networks:
+      - flask_net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    depends_on:
+      - loki
+    networks:
+      - flask_net
